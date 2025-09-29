@@ -1,0 +1,58 @@
+name: Hugging Face Space Keep Alive
+
+on:
+  schedule:
+    # 每30分钟执行一次（UTC时间）
+    - cron: "*/30 * * * *"
+  workflow_dispatch:  # 允许手动触发
+  push:
+    branches: [ main ]
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Ping Hugging Face Space
+        env:
+          SPACE_URL: "https://huggingface.co/spaces/${{ secrets.HF_USERNAME }}/${{ secrets.HF_SPACE_NAME }}"
+        run: |
+          echo "开始保活任务: $(date)"
+          echo "目标 Space: $SPACE_URL"
+          
+          # 发送保活请求
+          response=$(curl -s -o /dev/null -w "%{http_code}" "$SPACE_URL" || echo "CURL_ERROR")
+          
+          if [ "$response" = "200" ]; then
+            echo "✅ 保活成功 - HTTP 200"
+          elif [ "$response" = "302" ]; then
+            echo "⚠️ 重定向响应 - 可能正在启动中"
+          else
+            echo "❌ 保活失败 - 状态码: $response"
+            exit 1
+          fi
+          
+          echo "保活完成时间: $(date)"
+
+      - name: 发送通知（可选）
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Hugging Face Space 保活失败',
+              body: `保活任务执行失败，请检查 Space 状态。\n\n执行时间: ${new Date().toLocaleString('zh-CN')}\nSpace: https://huggingface.co/spaces/${{ secrets.HF_USERNAME }}/${{ secrets.HF_SPACE_NAME }}`
+            })
