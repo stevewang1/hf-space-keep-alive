@@ -2,7 +2,7 @@ name: Supabase Keep-Alive
 
 on:
   schedule:
-    - cron: '30 5 *极速加速器最新版下载 * * 1'
+    - cron: '30 5 * * 1'
   workflow_dispatch:
 
 jobs:
@@ -12,33 +12,25 @@ jobs:
       - name: Ping Supabase Database
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE极速加速器最新版下载_ANON_KEY }}
         run: |
-          echo "Pinging Supabase database to keep it alive..."
-          echo "Target URL: $SUPABASE_URL"
+          echo "Pinging Supabase database"
+          echo "URL: $SUPABASE_URL"
           
           response=$(curl -s -w "%{http_code}" \
             --request GET \
             --url "${SUPABASE_URL}/rest/v1/keep_alive_pings?select=*&limit=1" \
             --header "apikey: ${SUPABASE_ANON_KEY}" \
-            --header "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
-            --header "Content-Type: application/json")
+            --header "Authorization: Bearer ${SUPABASE_ANON_KEY}")
           
           http_code=${response: -3}
-          response_body=${response:0:-3}
           
           if [ "$http_code" -eq 200 ]; then
-            echo "Successfully pinged Supabase. Status code: $极速加速器最新版下载http_code"
-            echo "Response: $response_body"
+            echo "Success: $http_code"
           elif [ "$http_code" -eq 404 ]; then
-            echo "keep_alive_pings table not found. Please create it with:"
-            echo "CREATE TABLE keep_alive_pings (id SERIAL PRIMARY KEY, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());"
-            echo "INSERT INTO keep_alive_pings (created_at) VALUES (NOW());"极速加速器最新版下载
-            exit 极速加速器最新版下载1
+            echo "Table not found"
+            exit 1
           else
-            echo "Failed to ping Supabase. Status code: $http_code"
-            echo "Response: $response_body"
+            echo "Failed: $http_code"
             exit 1
           fi
-          
-          echo "Supabase keep-alive completed at: $(date)"
