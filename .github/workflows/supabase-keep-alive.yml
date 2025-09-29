@@ -12,24 +12,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping Supabase Database
-        # This env block is crucial for the run step to access the secrets.
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           echo "Starting Supabase keep-alive task..."
           echo "Pinging target: ${SUPABASE_URL}"
-
-          # Perform a GET request to a specific table to generate database activity.
+          
+          # Build the correct Supabase REST API URL
+          API_URL="${SUPABASE_URL}/rest/v1/keep_alive_pings?select=*&limit=1"
+          echo "API URL: ${API_URL}"
+          
+          # Perform a GET request to generate database activity
           response=$(curl -s -w "%{http_code}" \
             --request GET \
-            --url "${SUPABASE_URL}/rest/v1/keep_alive_pings?select=*&limit=1" \
+            --url "${API_URL}" \
             --header "apikey: ${SUPABASE_ANON_KEY}" \
             --header "Authorization: Bearer ${SUPABASE_ANON_KEY}")
-
-          # Extract HTTP status code from the response.
-          http_code=$(tail -c 3 <<< "$response")
-
+          
+          # Extract HTTP status code more reliably
+          http_code=${response: -3}
+          
           if [ "$http_code" -eq 200 ]; then
             echo "✅ Success! Supabase project is active. (HTTP $http_code)"
           elif [ "$http_code" -eq 404 ]; then
@@ -38,6 +41,7 @@ jobs:
             exit 1
           else
             echo "❌ An unexpected error occurred. (HTTP $http_code)"
+            echo "Response: $response"
             echo "Please check your SUPABASE_URL and SUPABASE_ANON_KEY secrets."
             exit 1
           fi
