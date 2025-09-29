@@ -1,58 +1,20 @@
-name: Hugging Face Space Keep Alive
+name: Hugging Face Space Keep-Alive
 
 on:
   schedule:
-    # Run every 30 minutes (UTC time)
-    - cron: "*/30 * * * *"
-  workflow_dispatch:  # Allow manual trigger
-  push:
-    branches: [ main ]
+    # Runs every day at 5:30 UTC. This is more than enough to prevent the 48-hour sleep.
+    - cron: '30 5 * * *'
+  workflow_dispatch:
+    # Allows you to manually trigger the workflow from the Actions tab on GitHub.
 
 jobs:
-  keep-alive:
+  restart-space:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install dependencies
-        run: pip install requests
-
-      - name: Ping Hugging Face Space
-        env:
-          SPACE_URL: "https://huggingface.co/spaces/${{ secrets.HF_USERNAME }}/${{ secrets.HF_SPACE_NAME }}"
+      - name: Restart Hugging Face Space
         run: |
-          echo "Starting keep-alive task: $(date)"
-          echo "Target Space: $SPACE_URL"
-          
-          # Send keep-alive request
-          response=$(curl -s -o /dev/null -w "%{http_code}" "$SPACE_URL" || echo "CURL_ERROR")
-          
-          if [ "$response" = "200" ]; then
-            echo "✅ Keep alive successful - HTTP 200"
-          elif [ "$response" = "302" ]; then
-            echo "⚠️ Redirect response - Space might be starting up"
-          elif [ "$response" = "404" ]; then
-            echo "❌ Space not found (404) - Check username and space name"
-            echo "URL format: https://huggingface.co/spaces/USERNAME/SPACE_NAME"
-            exit 1
-          else
-            echo "❌ Keep alive failed - Status code: $response"
-            exit 1
-          fi
-          
-          echo "Keep alive completed at: $(date)"
-
-      - name: Simple error notification
-        if: failure()
-        run: |
-          echo "🚨 Keep alive task failed!"
-          echo "Please check:"
-          echo "1. HF_USERNAME and HF_SPACE_NAME secrets are set correctly"
-          echo "2. Space is publicly accessible"
-          echo "3. Space URL: https://huggingface.co/spaces/${{ secrets.HF_USERNAME }}/${{ secrets.HF_SPACE_NAME }}"
+          # Send a POST request to the Hugging Face API to restart the Space.
+          # This is the most reliable method to keep a Space from sleeping.
+          curl -v -X POST \
+            -H "Authorization: Bearer ${{ secrets.HF_TOKEN }}" \
+            "https://huggingface.co/api/spaces/stevewang11/n8n-free/restart"
