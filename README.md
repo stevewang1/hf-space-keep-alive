@@ -1,14 +1,22 @@
-# Hugging Face Space Keep Alive
+# Multi-Service Keep Alive
 
-GitHub Actions workflow to automatically keep your Hugging Face Space from going inactive.
+GitHub Actions workflows to automatically keep your services from going inactive.
 
 ## 🚀 Features
 
+### Hugging Face Space
 - ✅ Automatically pings your Hugging Face Space every 30 minutes
 - ✅ Prevents Space from going inactive due to inactivity
+
+### Supabase Database  
+- ✅ Weekly ping to prevent Supabase project pausing (7-day inactivity limit)
+- ✅ Uses dedicated database table for activity tracking
 - ✅ Free to use (GitHub Actions free tier)
+
+### General
 - ✅ Manual trigger support
 - ✅ Failure notifications
+- ✅ Free to use (GitHub Actions free tier)
 
 ## ⚙️ Setup Instructions
 
@@ -16,58 +24,74 @@ GitHub Actions workflow to automatically keep your Hugging Face Space from going
 
 Go to your repository Settings → Secrets and variables → Actions
 
-Add the following secrets:
-
+**For Hugging Face:**
 - `HF_USERNAME`: Your Hugging Face username
 - `HF_SPACE_NAME`: Your Space name
 
-### 2. Test the Workflow
+**For Supabase:**
+- `SUPABASE_URL`: Your Supabase project URL (e.g., `https://xxxxxx.supabase.co`)
+- `SUPABASE_ANON_KEY`: Your Supabase anon public key (from Settings → API)
+
+### 2. Supabase Database Setup
+
+Before using the Supabase keep-alive, create the required table:
+
+```sql
+-- Run this in your Supabase SQL Editor
+CREATE TABLE IF NOT EXISTS keep_alive_pings (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Insert initial data
+INSERT INTO keep_alive_pings (created_at) VALUES (NOW());
+```
+
+### 3. Test the Workflows
 
 1. Go to the Actions tab
-2. Select "Hugging Face Space Keep Alive" workflow
+2. Select either "Hugging Face Space Keep Alive" or "Supabase Keep-Alive" workflow
 3. Click "Run workflow" to test manually
-
-### 3. Automatic Scheduling
-
-The workflow will automatically run:
-- Every 30 minutes (UTC time)
-- On every push to main branch
-- Manually when triggered
 
 ## 🔧 Configuration
 
-### Custom Schedule
-
-Edit the cron schedule in `.github/workflows/keep-alive.yml`:
-
+### Hugging Face Schedule
+Edit `.github/workflows/keep-alive.yml`:
 ```yaml
 schedule:
   - cron: "*/30 * * * *"  # Every 30 minutes
-  # - cron: "0 */6 * * *"   # Every 6 hours
-  # - cron: "0 9 * * *"     # Daily at 9:00 AM UTC
 ```
 
-### Notification Settings
-
-By default, the workflow will create a GitHub Issue if it fails. You can customize this behavior in the workflow file.
+### Supabase Schedule  
+Edit `.github/workflows/supabase-keep-alive.yml`:
+```yaml
+schedule:
+  - cron: '30 5 * * 1'    # Every Monday at 5:30 AM UTC
+```
 
 ## 📊 Monitoring
 
 - Check the Actions tab for execution logs
 - View success/failure status
-- Monitor Space activity on Hugging Face
+- Monitor service activity on respective platforms
 
 ## ❓ Troubleshooting
 
 ### Common Issues
 
-1. **Secrets not configured** - Make sure `HF_USERNAME` and `HF_SPACE_NAME` are set
-2. **Space not public** - Ensure your Space is publicly accessible
-3. **Rate limiting** - If using free tier, respect Hugging Face's rate limits
+**Hugging Face:**
+- Secrets not configured
+- Space not public  
+- Rate limiting
+
+**Supabase:**
+- `keep_alive_pings` table not created
+- Invalid URL or anon key
+- Database permissions issues
 
 ### Debug Mode
 
-To enable debug output, add `-v` flag to the curl command in the workflow.
+Workflows include detailed logging. Check the Actions output for specific error messages.
 
 ## 📝 License
 
@@ -79,4 +103,4 @@ Feel free to submit issues and enhancement requests!
 
 ---
 
-**Note**: This workflow helps prevent your Space from going inactive, but cannot prevent other Hugging Face resource limitations.
+**Note**: These workflows help prevent services from going inactive, but cannot prevent other platform-specific resource limitations.
