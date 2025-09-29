@@ -37,6 +37,10 @@ jobs:
             echo "✅ Keep alive successful - HTTP 200"
           elif [ "$response" = "302" ]; then
             echo "⚠️ Redirect response - Space might be starting up"
+          elif [ "$response" = "404" ]; then
+            echo "❌ Space not found (404) - Check username and space name"
+            echo "URL format: https://huggingface.co/spaces/USERNAME/SPACE_NAME"
+            exit 1
           else
             echo "❌ Keep alive failed - Status code: $response"
             exit 1
@@ -44,15 +48,11 @@ jobs:
           
           echo "Keep alive completed at: $(date)"
 
-      - name: Send notification (optional)
+      - name: Simple error notification
         if: failure()
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: '🚨 Hugging Face Space Keep Alive Failed',
-              body: `Keep alive task failed. Please check Space status.\n\nExecution time: ${new Date().toLocaleString()}\nSpace: https://huggingface.co/spaces/${{ secrets.HF_USERNAME }}/${{ secrets.HF_SPACE_NAME }}`
-            })
+        run: |
+          echo "🚨 Keep alive task failed!"
+          echo "Please check:"
+          echo "1. HF_USERNAME and HF_SPACE_NAME secrets are set correctly"
+          echo "2. Space is publicly accessible"
+          echo "3. Space URL: https://huggingface.co/spaces/${{ secrets.HF_USERNAME }}/${{ secrets.HF_SPACE_NAME }}"
