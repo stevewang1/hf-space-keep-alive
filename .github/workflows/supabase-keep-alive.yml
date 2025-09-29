@@ -2,37 +2,42 @@ name: Supabase Keep-Alive
 
 on:
   schedule:
+    # Runs every Monday at 5:30 UTC. Supabase free tier pauses after 7 days of inactivity.
     - cron: '30 5 * * 1'
   workflow_dispatch:
+    # Allows manual triggering from the Actions tab for testing.
 
 jobs:
   ping-supabase:
     runs-on: ubuntu-latest
     steps:
       - name: Ping Supabase Database
+        # This env block is crucial for the run step to access the secrets.
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          echo "Starting Supabase keep-alive"
-          echo "Target: $SUPABASE_URL"
-          
+          echo "Starting Supabase keep-alive task..."
+          echo "Pinging target: ${SUPABASE_URL}"
+
+          # Perform a GET request to a specific table to generate database activity.
           response=$(curl -s -w "%{http_code}" \
             --request GET \
             --url "${SUPABASE_URL}/rest/v1/keep_alive_pings?select=*&limit=1" \
             --header "apikey: ${SUPABASE_ANON_KEY}" \
             --header "Authorization: Bearer ${SUPABASE_ANON_KEY}")
-          
-          http_code=${response: -3}
-          
+
+          # Extract HTTP status code from the response.
+          http_code=$(tail -c 3 <<< "$response")
+
           if [ "$http_code" -eq 200 ]; then
-            echo "Success: HTTP $http_code"
+            echo "✅ Success! Supabase project is active. (HTTP $http_code)"
           elif [ "$http_code" -eq 404 ]; then
-            echo "Error: Table not found"
+            echo "❌ Error: The 'keep_alive_pings' table was not found. (HTTP $http_code)"
+            echo "Please run the required SQL setup script in your Supabase project."
             exit 1
           else
-            echo "Error: HTTP $http_code"
+            echo "❌ An unexpected error occurred. (HTTP $http_code)"
+            echo "Please check your SUPABASE_URL and SUPABASE_ANON_KEY secrets."
             exit 1
           fi
-          
-          echo "Completed"
