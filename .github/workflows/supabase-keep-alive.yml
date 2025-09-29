@@ -12,10 +12,10 @@ jobs:
       - name: Ping Supabase Database
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE极速加速器最新版下载_ANON_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          echo "Pinging Supabase database"
-          echo "URL: $SUPABASE_URL"
+          echo "Starting Supabase keep-alive"
+          echo "Target: $SUPABASE_URL"
           
           response=$(curl -s -w "%{http_code}" \
             --request GET \
@@ -26,11 +26,13 @@ jobs:
           http_code=${response: -3}
           
           if [ "$http_code" -eq 200 ]; then
-            echo "Success: $http_code"
+            echo "Success: HTTP $http_code"
           elif [ "$http_code" -eq 404 ]; then
-            echo "Table not found"
+            echo "Error: Table not found"
             exit 1
           else
-            echo "Failed: $http_code"
+            echo "Error: HTTP $http_code"
             exit 1
           fi
+          
+          echo "Completed"
