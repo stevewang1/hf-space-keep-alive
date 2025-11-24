@@ -1,0 +1,47 @@
+name: Repository Keepalive
+
+on:
+  schedule:
+    # Runs every Sunday at 00:00 UTC to keep repository active
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+    # Allows manual triggering for testing
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Configure git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+      
+      - name: Check last commit date
+        id: check_date
+        run: |
+          last_commit_date=$(git log -1 --format=%ct)
+          current_date=$(date +%s)
+          days_since_commit=$(( (current_date - last_commit_date) / 86400 ))
+          echo "Days since last commit: $days_since_commit"
+          echo "days_since_commit=$days_since_commit" >> $GITHUB_OUTPUT
+      
+      - name: Create keepalive commit if needed
+        if: steps.check_date.outputs.days_since_commit >= 50
+        run: |
+          echo "Repository has been inactive for 50+ days. Creating keepalive commit..."
+          git commit --allow-empty -m "chore: keepalive commit to prevent workflow suspension
+          
+          This automated commit prevents GitHub from disabling scheduled workflows
+          due to repository inactivity (60-day threshold)."
+          git push
+          echo "✅ Keepalive commit created successfully!"
+      
+      - name: Skip if not needed
+        if: steps.check_date.outputs.days_since_commit < 50
+        run: |
+          echo "✅ Repository is active (last commit was ${{ steps.check_date.outputs.days_since_commit }} days ago). No action needed."
